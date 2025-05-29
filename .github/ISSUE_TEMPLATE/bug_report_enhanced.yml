@@ -1,0 +1,147 @@
+---
+name: 🐛 Bug Report
+about: Report a bug to help us improve the job automation system
+title: '[BUG] '
+labels: ['bug', 'needs-triage']
+assignees: ''
+
+---
+
+## 🐛 **Bug Summary**
+<!-- A clear and concise description of what the bug is -->
+
+
+## 🔄 **Steps to Reproduce**
+<!-- Detailed steps to reproduce the behavior -->
+1. 
+2. 
+3. 
+4. 
+
+## ✅ **Expected Behavior**
+<!-- What you expected to happen -->
+
+
+## ❌ **Actual Behavior**
+<!-- What actually happened instead -->
+
+
+## 📸 **Screenshots/Logs**
+<!-- If applicable, add screenshots or paste log output -->
+```
+Paste log output here
+```
+
+## 🌍 **Environment Details**
+<!-- Please fill out this information -->
+
+**System Information:**
+- OS: [e.g. macOS 14.0, Ubuntu 22.04, Windows 11]
+- Browser: [e.g. Chrome 120, Firefox 115, Safari 17]
+- Docker Version: [e.g. 24.0.6]
+- Docker Compose Version: [e.g. 2.21.0]
+
+**n8n Information:**
+- n8n Version: [e.g. 1.15.0 - check at http://localhost:5678/about]
+- Installation Method: [Docker Compose, Dev Container, Manual]
+- Database: [PostgreSQL version]
+
+**Job Automation Specific:**
+- Affected Workflow: [e.g. LinkedIn Job Discovery, Resume Customization]
+- Job Platform: [e.g. LinkedIn, Indeed, Company Website]
+- API Integrations: [OpenAI, Google APIs, etc.]
+
+## 🔧 **Configuration**
+<!-- Share relevant configuration (remove sensitive data!) -->
+```yaml
+# docker-compose.yml excerpt or environment variables
+# Remove any sensitive information like API keys!
+```
+
+## 📊 **Impact Assessment**
+<!-- Help us understand the severity -->
+- **Frequency**: 
+  - [ ] Always happens
+  - [ ] Happens sometimes
+  - [ ] Happened once
+  - [ ] Can't reproduce consistently
+
+- **Impact**: 
+  - [ ] 🔥 Critical - System completely unusable
+  - [ ] 🚨 High - Major functionality broken
+  - [ ] 📋 Medium - Some features affected
+  - [ ] 💡 Low - Minor inconvenience
+
+- **Affects**: 
+  - [ ] All users
+  - [ ] Specific configuration
+  - [ ] Specific workflow
+  - [ ] Development environment only
+
+## 🔍 **Debugging Information**
+<!-- Help us debug the issue -->
+
+**Error Messages:**
+```
+Paste any error messages here
+```
+
+**n8n Workflow Details:**
+- Workflow Name: 
+- Failing Node: 
+- Node Type: 
+- Last Successful Run: 
+
+**Browser Console Errors:**
+```
+Paste browser console errors here (F12 -> Console)
+```
+
+**Docker Logs:**
+```bash
+# Run these commands and paste the output:
+# docker-compose logs n8n
+# docker-compose logs postgres
+# docker-compose logs redis
+```
+
+## 🛠️ **Troubleshooting Attempted**
+<!-- What have you tried to fix this? -->
+- [ ] Restarted Docker containers
+- [ ] Cleared browser cache/cookies
+- [ ] Checked API credentials
+- [ ] Reviewed workflow configuration
+- [ ] Checked network connectivity
+- [ ] Updated to latest version
+- [ ] Other: ___________
+
+## 🔄 **Workaround**
+<!-- Is there a temporary workaround? -->
+
+
+## 🔗 **Related Issues**
+<!-- Link to any related issues or discussions -->
+- Related to: #
+- Duplicate of: #
+- Similar to: #
+
+## 📋 **Additional Context**
+<!-- Any other context, links, or information about the problem -->
+
+
+## ✅ **Acceptance Criteria for Fix**
+<!-- What would make this bug "resolved"? -->
+- [ ] Bug no longer occurs following reproduction steps
+- [ ] Error handling improved (if applicable)
+- [ ] Documentation updated (if needed)
+- [ ] Tests added to prevent regression
+
+---
+
+**🚨 Security Note:**
+If this bug involves a security vulnerability, please email us directly instead of creating a public issue.
+
+**💡 Community Note:**
+- Please search existing issues before creating a new one
+- Provide as much detail as possible for faster resolution
+- Consider joining our community discussions for support
