@@ -23,6 +23,12 @@ services:
       - N8N_AI_ENABLED=true
       - N8N_METRICS=true
       - N8N_LOG_LEVEL=${LOG_LEVEL:-info}
+      # OpenAI Integration
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # Additional API Keys
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - SCRAPE_NINJA_API_KEY=${SCRAPE_NINJA_API_KEY}
     volumes:
       - n8n_data:/home/node/.n8n
       - ./workflows:/home/node/.n8n/workflows
@@ -30,6 +36,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - n8n-network
 
@@ -67,12 +75,48 @@ services:
     networks:
       - n8n-network
 
+  # Database Administration Interface
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: n8n-pgadmin
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@n8n-automation.local}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin123}
+      - PGADMIN_CONFIG_SERVER_MODE=False
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - n8n-network
+
+  # Redis Administration Interface
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: n8n-redis-commander
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+      - HTTP_USER=${REDIS_COMMANDER_USER:-admin}
+      - HTTP_PASSWORD=${REDIS_COMMANDER_PASSWORD:-admin123}
+    depends_on:
+      - redis
+    networks:
+      - n8n-network
+
 volumes:
   n8n_data:
     driver: local
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  pgadmin_data:
     driver: local
 
 networks:
