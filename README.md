@@ -84,20 +84,20 @@ Once running, access these services:
 |---------|-----|---------| 
 | **n8n Interface** | http://localhost:5678 | Main automation platform |
 | **Grafana Dashboard** | http://localhost:3000 | Analytics and monitoring |
-| **Database Admin** | http://localhost:8080 | Database management |
-| **Redis Commander** | http://localhost:8081 | Cache management |
+| **Database Admin** | http://localhost:8080 | PostgreSQL management (pgAdmin) |
+| **Redis Commander** | http://localhost:8081 | Redis cache management |
 | **Uptime Monitor** | http://localhost:3001 | Service health monitoring |
 
 ## 📋 Comprehensive Implementation Roadmap
 
 ### **Phase 1: Foundation & Infrastructure** (Week 1) ✅
-**Status**: 80% Complete
+**Status**: 90% Complete
 - [x] Docker infrastructure with n8n, PostgreSQL, Redis
 - [x] Dev Container setup for instant development
 - [x] Security scanning and CI/CD pipeline
+- [x] Database and Redis admin interfaces
+- [ ] [Issue #20: LinkedIn Job Discovery Workflow](https://github.com/joelfuller2016/n8n-job-automation-system/issues/20) - Foundation job scraping
 - [ ] [Issue #19: Local PC Deployment Strategy](https://github.com/joelfuller2016/n8n-job-automation-system/issues/19) - Cost optimization and self-hosted setup
-- [ ] Basic job discovery workflows (LinkedIn, Indeed)
-- [ ] Community nodes installation
 
 ### **Phase 2: AI Intelligence Engine** (Weeks 2-3)
 **Status**: Planning Complete, Implementation Pending
@@ -173,7 +173,8 @@ graph TB
     subgraph "User Interface"
         N8N[n8n Web Interface]
         GRAF[Grafana Dashboard]
-        MOBILE[Mobile App]
+        PGADMIN[pgAdmin]
+        REDIS_CMD[Redis Commander]
     end
     
     subgraph "Core Services"
@@ -205,6 +206,8 @@ graph TB
     end
     
     N8N --> API
+    PGADMIN --> DB
+    REDIS_CMD --> CACHE
     API --> DB
     API --> CACHE
     API --> AI
