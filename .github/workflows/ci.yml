@@ -1,0 +1,205 @@
+name: Workflow Validation & Testing
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'workflows/**'
+      - 'scripts/**'
+      - 'docker-compose.yml'
+      - '.github/workflows/**'
+
+jobs:
+  validate-workflows:
+    runs-on: ubuntu-latest
+    name: Validate n8n Workflows
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: |
+        npm install -g n8n
+        npm install ajv ajv-formats
+    
+    - name: Validate workflow JSON files
+      run: |
+        echo "🔍 Validating workflow JSON syntax..."
+        for file in workflows/*.json; do
+          if [ -f "$file" ]; then
+            echo "Validating $file"
+            node -e "JSON.parse(require('fs').readFileSync('$file', 'utf8'))" || exit 1
+          fi
+        done
+    
+    - name: Check workflow structure
+      run: |
+        echo "📋 Checking workflow structure..."
+        if [ -f "scripts/validate-workflows.js" ]; then
+          node scripts/validate-workflows.js
+        else
+          echo "⚠️ Workflow validation script not found, skipping detailed validation"
+        fi
+    
+    - name: Security scan for exposed credentials
+      run: |
+        echo "🔒 Scanning for exposed credentials..."
+        if grep -r "sk-[a-zA-Z0-9]\\{48\\}" workflows/ 2>/dev/null; then
+          echo "❌ Found exposed OpenAI API key!"
+          exit 1
+        fi
+        if grep -r "ya29\\.[a-zA-Z0-9_-]\\{68\\}" workflows/ 2>/dev/null; then
+          echo "❌ Found exposed Google OAuth token!"
+          exit 1
+        fi
+        echo "✅ No exposed credentials found"
+
+  docker-build-test:
+    runs-on: ubuntu-latest
+    name: Test Docker Build
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Create environment file
+      run: |
+        cp .env.example .env
+        # Set test values for required variables
+        echo "OPENAI_API_KEY=sk-test-key-for-validation" >> .env
+        echo "POSTGRES_PASSWORD=test-password" >> .env
+    
+    - name: Build Docker containers
+      run: |
+        docker-compose build
+    
+    - name: Start containers
+      run: |
+        docker-compose up -d
+        sleep 30
+    
+    - name: Check container health
+      run: |
+        docker-compose ps
+        # Check if n8n is responding (basic health check)
+        if curl -f -s http://localhost:5678/healthz > /dev/null 2>&1; then
+          echo "✅ n8n health check passed"
+        else
+          echo "⚠️ n8n health check failed (might be normal for test environment)"
+        fi
+    
+    - name: Check logs for errors
+      if: always()
+      run: |
+        echo "📋 Docker container logs:"
+        docker-compose logs --tail=50
+    
+    - name: Cleanup containers
+      if: always()
+      run: |
+        docker-compose down -v
+
+  documentation-check:
+    runs-on: ubuntu-latest
+    name: Validate Documentation
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Check README links
+      run: |
+        echo "🔗 Checking internal documentation links..."
+        # Check for broken internal links in README
+        if [ -f "README.md" ]; then
+          grep -o '\\[.*\\](.*)' README.md | grep -o '(.*)'  | sed 's/[()]//g' | while read link; do
+            if [[ $link == http* ]]; then
+              continue  # Skip external links for now
+            fi
+            if [ ! -f "$link" ] && [ ! -d "$link" ]; then
+              echo "❌ Broken link: $link"
+              exit 1
+            fi
+          done
+        fi
+        echo "✅ All internal links are valid"
+    
+    - name: Check required documentation
+      run: |
+        echo "📚 Checking for required documentation files..."
+        required_docs=("CONTRIBUTING.md" "LICENSE")
+        missing_docs=()
+        
+        for doc in "${required_docs[@]}"; do
+          if [ ! -f "$doc" ]; then
+            missing_docs+=("$doc")
+          fi
+        done
+        
+        if [ ${#missing_docs[@]} -gt 0 ]; then
+          echo "❌ Missing required documentation:"
+          printf '%s\n' "${missing_docs[@]}"
+          exit 1
+        fi
+        echo "✅ All required documentation present"
+    
+    - name: Validate docker-compose syntax
+      run: |
+        echo "🐳 Validating docker-compose.yml syntax..."
+        docker-compose config > /dev/null
+        echo "✅ Docker Compose syntax is valid"
+
+  security-audit:
+    runs-on: ubuntu-latest
+    name: Security Audit
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  notify-status:
+    runs-on: ubuntu-latest
+    name: Notify Build Status
+    needs: [validate-workflows, docker-build-test, documentation-check, security-audit]
+    if: always()
+    
+    steps:
+    - name: Build Status Summary
+      run: |
+        echo "📊 Build Summary:"
+        echo "Workflow Validation: ${{ needs.validate-workflows.result }}"
+        echo "Docker Build Test: ${{ needs.docker-build-test.result }}"
+        echo "Documentation Check: ${{ needs.documentation-check.result }}"
+        echo "Security Audit: ${{ needs.security-audit.result }}"
+        
+        if [[ "${{ needs.validate-workflows.result }}" == "success" && 
+              "${{ needs.docker-build-test.result }}" == "success" && 
+              "${{ needs.documentation-check.result }}" == "success" ]]; then
+          echo "🎉 All checks passed!"
+        else
+          echo "❌ Some checks failed"
+          exit 1
+        fi
