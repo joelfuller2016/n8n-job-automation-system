@@ -1,10 +1,18 @@
 {
-  "name": "n8n Job Automation System",
+  "name": "n8n Job Automation Development",
   "dockerComposeFile": "../docker-compose.dev.yml",
-  "service": "devcontainer",
+  "service": "n8n",
   "workspaceFolder": "/workspace",
   "shutdownAction": "stopCompose",
   
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "18"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
+
   "customizations": {
     "vscode": {
       "extensions": [
@@ -14,29 +22,20 @@
         "bradlc.vscode-tailwindcss",
         "esbenp.prettier-vscode",
         "ms-vscode.vscode-typescript-next",
-        "github.copilot",
-        "github.copilot-chat"
+        "GitHub.copilot"
       ],
       "settings": {
-        "terminal.integrated.defaultProfile.linux": "bash",
         "editor.formatOnSave": true,
-        "editor.codeActionsOnSave": {
-          "source.fixAll": true
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "files.associations": {
+          "*.json": "json",
+          "docker-compose*.yml": "yaml"
         }
       }
     }
   },
 
-  "features": {
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "18"
-    },
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
-    "ghcr.io/devcontainers/features/git:1": {},
-    "ghcr.io/devcontainers/features/github-cli:1": {}
-  },
-
-  "forwardPorts": [5678, 5432, 6379, 3000, 9090, 3001],
+  "forwardPorts": [5678, 5432, 6379, 3000],
   "portsAttributes": {
     "5678": {
       "label": "n8n Web Interface",
@@ -48,16 +47,12 @@
     "6379": {
       "label": "Redis Cache"
     },
-    "9090": {
-      "label": "Prometheus"
-    },
-    "3001": {
-      "label": "Grafana"
+    "3000": {
+      "label": "Documentation"
     }
   },
 
   "postCreateCommand": "bash .devcontainer/setup.sh",
-  "postStartCommand": "docker-compose up -d",
 
-  "remoteUser": "vscode"
+  "remoteUser": "node"
 }
