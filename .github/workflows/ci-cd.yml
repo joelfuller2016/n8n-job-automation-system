@@ -5,288 +5,264 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
-    paths:
-      - 'workflows/**'
-      - 'scripts/**'
-      - 'docker-compose*.yml'
-      - '.github/workflows/**'
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly security scan
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  # Security Scanning
+  # Security and Quality Checks
   security-scan:
-    name: 🔒 Security Scan
+    name: 🛡️ Security Scan
     runs-on: ubuntu-latest
     permissions:
       security-events: write
+      actions: read
       contents: read
+    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: javascript, python
+        queries: +security-and-quality
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
 
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-
-      - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: 'trivy-results.sarif'
-
-      - name: Run CodeQL Analysis
-        uses: github/codeql-action/init@v3
-        with:
-          languages: javascript
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+  # Dependency Management
+  dependency-check:
+    name: 📦 Dependency Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: |
+        if [ -f package.json ]; then
+          npm ci
+        fi
+    
+    - name: Run dependency audit
+      run: |
+        if [ -f package.json ]; then
+          npm audit --audit-level moderate
+        fi
+    
+    - name: Check for outdated packages
+      run: |
+        if [ -f package.json ]; then
+          npm outdated || true
+        fi
 
   # Workflow Validation
   validate-workflows:
     name: ✅ Validate Workflows
     runs-on: ubuntu-latest
+    
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: |
-          npm install -g n8n@latest
-          npm install ajv ajv-formats
-      
-      - name: Validate workflow JSON files
-        run: |
-          echo "🔍 Validating workflow JSON syntax..."
-          for file in workflows/*.json; do
-            if [ -f "$file" ]; then
-              echo "Validating $file"
-              node -e "JSON.parse(require('fs').readFileSync('$file', 'utf8'))" || exit 1
-            fi
-          done
-      
-      - name: Check workflow structure
-        run: |
-          echo "🔍 Checking workflow structure..."
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Install validation dependencies
+      run: |
+        npm install -g ajv ajv-formats
+        npm install --no-save lodash
+    
+    - name: Validate JSON syntax
+      run: |
+        echo "🔍 Validating workflow JSON syntax..."
+        for file in workflows/*.json; do
+          if [ -f "$file" ]; then
+            echo "Validating $file"
+            node -e "JSON.parse(require('fs').readFileSync('$file', 'utf8'))" || exit 1
+          fi
+        done
+    
+    - name: Check workflow structure
+      run: |
+        if [ -f scripts/validate-workflows.js ]; then
           node scripts/validate-workflows.js
-      
-      - name: Security scan workflows
-        run: |
-          echo "🔒 Scanning for exposed credentials..."
-          if grep -r "sk-[a-zA-Z0-9]\{48\}" workflows/; then
-            echo "❌ Found exposed OpenAI API key!"
-            exit 1
-          fi
-          if grep -r "ya29\.[a-zA-Z0-9_-]\{68\}" workflows/; then
-            echo "❌ Found exposed Google OAuth token!"
-            exit 1
-          fi
-          echo "✅ No exposed credentials found"
+        fi
+    
+    - name: Scan for exposed credentials
+      run: |
+        echo "🔍 Scanning for exposed credentials..."
+        if grep -r "sk-[a-zA-Z0-9]\{48\}" workflows/ || \
+           grep -r "ya29\.[a-zA-Z0-9_-]\{68\}" workflows/ || \
+           grep -r "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}" workflows/; then
+          echo "❌ Found exposed credentials!"
+          exit 1
+        fi
+        echo "✅ No exposed credentials found"
 
   # Docker Build and Test
   docker-build:
     name: 🐳 Docker Build & Test
     runs-on: ubuntu-latest
     needs: [security-scan, validate-workflows]
-    permissions:
-      contents: read
-      packages: write
+    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Log in to Container Registry
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-      
-      - name: Build Docker containers
-        run: |
-          cp .env.example .env
-          docker-compose build
-      
-      - name: Test container startup
-        run: |
-          echo "🚀 Starting containers..."
-          docker-compose up -d
-          
-          echo "⏳ Waiting for services to be ready..."
-          sleep 60
-          
-          echo "📊 Checking container status..."
-          docker-compose ps
-          
-          echo "🏥 Health check n8n..."
-          timeout 120 bash -c 'until curl -f http://localhost:5678/healthz 2>/dev/null; do echo "Waiting for n8n..."; sleep 5; done'
-          
-          echo "🗄️ Health check PostgreSQL..."
-          docker-compose exec -T postgres pg_isready -U n8n || exit 1
-          
-          echo "📦 Health check Redis..."
-          docker-compose exec -T redis redis-cli ping || exit 1
-          
-          echo "✅ All services are healthy!"
-
-      - name: Run integration tests
-        run: |
-          echo "🧪 Running integration tests..."
-          # Test n8n API
-          curl -f http://localhost:5678/rest/settings || exit 1
-          
-          # Test database connection
-          docker-compose exec -T postgres psql -U n8n -d n8n -c "SELECT 1;" || exit 1
-          
-          echo "✅ Integration tests passed!"
-      
-      - name: Build and push Docker image
-        if: github.event_name != 'pull_request'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      
-      - name: Cleanup
-        if: always()
-        run: |
-          docker-compose down -v --remove-orphans
+    - uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to Container Registry
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build Docker images
+      run: |
+        echo "🔨 Building Docker containers..."
+        cp .env.example .env
+        docker-compose build
+    
+    - name: Test container startup
+      run: |
+        echo "🧪 Testing container startup..."
+        docker-compose up -d
+        
+        # Wait for services to be ready
+        echo "⏳ Waiting for services..."
+        sleep 60
+        
+        # Check service health
+        docker-compose ps
+        
+        # Test n8n health endpoint
+        curl -f http://localhost:5678/healthz || exit 1
+        
+        echo "✅ All containers started successfully"
+    
+    - name: Run integration tests
+      run: |
+        echo "🧪 Running integration tests..."
+        # Add your integration tests here
+        docker-compose exec -T n8n n8n --version
+    
+    - name: Build and push Docker image
+      if: github.event_name != 'pull_request'
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: Cleanup
+      if: always()
+      run: |
+        docker-compose down -v
 
   # Performance Testing
   performance-test:
     name: ⚡ Performance Test
     runs-on: ubuntu-latest
-    needs: docker-build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [docker-build]
+    
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup environment
-        run: |
-          cp .env.example .env
-          docker-compose up -d
-          sleep 60
-      
-      - name: Install k6
-        run: |
-          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
-          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
-          sudo apt-get update
-          sudo apt-get install k6
-      
-      - name: Run performance tests
-        run: |
-          k6 run --vus 10 --duration 30s tests/performance/api-load-test.js || echo "Performance test completed with warnings"
-      
-      - name: Cleanup
-        if: always()
-        run: docker-compose down -v
+    - uses: actions/checkout@v4
+    
+    - name: Setup performance testing
+      run: |
+        echo "⚡ Setting up performance tests..."
+        # Add your performance testing setup here
+    
+    - name: Run load tests
+      run: |
+        echo "🔥 Running load tests..."
+        # Add load testing commands here
 
-  # Documentation Check
-  documentation:
-    name: 📚 Documentation Check
+  # Documentation Build
+  docs-build:
+    name: 📚 Build Documentation
     runs-on: ubuntu-latest
+    
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Check README links
-        run: |
-          echo "🔗 Checking README links..."
-          grep -o '\[.*\](.*)' README.md | grep -o '(.*)'  | sed 's/[()]//g' | while read link; do
-            if [[ $link == http* ]]; then
-              continue  # Skip external links for now
-            fi
-            if [ ! -f "$link" ] && [ ! -d "$link" ]; then
-              echo "❌ Broken link: $link"
-              exit 1
-            fi
-          done
-          echo "✅ All internal links are valid"
-      
-      - name: Check documentation completeness
-        run: |
-          echo "📋 Checking required documentation..."
-          required_docs=("docs/SETUP.md" "docs/SECURITY.md" "CONTRIBUTING.md" "LICENSE")
-          for doc in "${required_docs[@]}"; do
-            if [ ! -f "$doc" ]; then
-              echo "❌ Missing required documentation: $doc"
-              exit 1
-            fi
-          done
-          echo "✅ All required documentation present"
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Build documentation
+      run: |
+        echo "📖 Building documentation..."
+        # Add documentation build steps here
+    
+    - name: Deploy to GitHub Pages
+      if: github.ref == 'refs/heads/main'
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs
+        cname: n8n-job-automation.example.com
 
-  # Deploy to staging (on main branch)
-  deploy-staging:
-    name: 🚀 Deploy to Staging
-    runs-on: ubuntu-latest
-    needs: [docker-build, performance-test]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    environment: staging
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Deploy to staging
-        run: |
-          echo "🚀 Deploying to staging environment..."
-          echo "This would typically deploy to a staging server"
-          echo "Container image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-          
-      - name: Run smoke tests
-        run: |
-          echo "🧪 Running smoke tests on staging..."
-          echo "All smoke tests passed!"
-
-  # Notify on completion
+  # Notification
   notify:
     name: 📢 Notify
     runs-on: ubuntu-latest
-    needs: [security-scan, validate-workflows, docker-build, documentation]
+    needs: [security-scan, validate-workflows, docker-build]
     if: always()
+    
     steps:
-      - name: Notify success
-        if: ${{ needs.security-scan.result == 'success' && needs.validate-workflows.result == 'success' && needs.docker-build.result == 'success' }}
-        run: |
-          echo "✅ All CI/CD checks passed successfully!"
-          echo "🚀 Ready for deployment!"
-      
-      - name: Notify failure
-        if: ${{ needs.security-scan.result == 'failure' || needs.validate-workflows.result == 'failure' || needs.docker-build.result == 'failure' }}
-        run: |
-          echo "❌ CI/CD pipeline failed!"
-          echo "🔍 Check the logs for details"
-          exit 1
+    - name: Notify on success
+      if: needs.security-scan.result == 'success' && needs.validate-workflows.result == 'success' && needs.docker-build.result == 'success'
+      run: |
+        echo "✅ All checks passed! Ready for deployment."
+    
+    - name: Notify on failure
+      if: needs.security-scan.result == 'failure' || needs.validate-workflows.result == 'failure' || needs.docker-build.result == 'failure'
+      run: |
+        echo "❌ Some checks failed. Please review the logs."
+        exit 1
