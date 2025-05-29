@@ -1,0 +1,62 @@
+version: 2
+updates:
+  # Docker dependencies
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    assignees:
+      - "joelfuller2016"
+    reviewers:
+      - "joelfuller2016"
+    commit-message:
+      prefix: "🐳"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "docker"
+      - "security"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "10:00"
+    assignees:
+      - "joelfuller2016"
+    reviewers:
+      - "joelfuller2016"
+    commit-message:
+      prefix: "🔧"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "github-actions"
+      - "security"
+
+  # npm dependencies (for any Node.js scripts)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "11:00"
+    assignees:
+      - "joelfuller2016"
+    reviewers:
+      - "joelfuller2016"
+    commit-message:
+      prefix: "📦"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "npm"
+      - "security"
+    # Security updates only initially
+    open-pull-requests-limit: 5
+    # Auto-merge minor and patch updates
+    enable-beta-ecosystems: true
