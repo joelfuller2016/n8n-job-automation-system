@@ -1,15 +1,40 @@
 version: 2
 updates:
-  # Docker dependencies
-  - package-ecosystem: "docker"
+  # Enable version updates for npm
+  - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "09:00"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "joelfuller2016"
     assignees:
       - "joelfuller2016"
+    commit-message:
+      prefix: "⬆️"
+      prefix-development: "⬆️ [DEV]"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "security"
+    ignore:
+      # Ignore major updates for stable dependencies
+      - dependency-name: "lodash"
+        update-types: ["version-update:semver-major"]
+
+  # Docker dependencies
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+    open-pull-requests-limit: 3
     reviewers:
+      - "joelfuller2016"
+    assignees:
       - "joelfuller2016"
     commit-message:
       prefix: "🐳"
@@ -17,46 +42,41 @@ updates:
     labels:
       - "dependencies"
       - "docker"
-      - "security"
 
-  # GitHub Actions
+  # GitHub Actions dependencies
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "monday"
-      time: "10:00"
-    assignees:
-      - "joelfuller2016"
+      day: "wednesday"
+      time: "09:00"
+    open-pull-requests-limit: 5
     reviewers:
       - "joelfuller2016"
+    assignees:
+      - "joelfuller2016"
     commit-message:
-      prefix: "🔧"
+      prefix: "⚡"
       include: "scope"
     labels:
       - "dependencies"
       - "github-actions"
-      - "security"
 
-  # npm dependencies (for any Node.js scripts)
-  - package-ecosystem: "npm"
+  # Python dependencies (if any)
+  - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "monday"
-      time: "11:00"
-    assignees:
-      - "joelfuller2016"
+      day: "thursday"
+      time: "09:00"
+    open-pull-requests-limit: 3
     reviewers:
       - "joelfuller2016"
+    assignees:
+      - "joelfuller2016"
     commit-message:
-      prefix: "📦"
+      prefix: "🐍"
       include: "scope"
     labels:
       - "dependencies"
-      - "npm"
-      - "security"
-    # Security updates only initially
-    open-pull-requests-limit: 5
-    # Auto-merge minor and patch updates
-    enable-beta-ecosystems: true
+      - "python"
