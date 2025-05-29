@@ -1,0 +1,96 @@
+---
+name: 🚀 Feature Request
+about: Suggest a new feature or enhancement for the job automation system
+title: '[FEATURE] '
+labels: ['enhancement', 'feature-request']
+assignees: ''
+
+---
+
+## 🎯 **Feature Summary**
+<!-- A clear and concise description of the feature you'd like to see -->
+
+
+## 💡 **Problem Statement**
+<!-- What problem does this feature solve? What's the current pain point? -->
+
+
+## 📋 **Detailed Description**
+<!-- Describe the solution you'd like to see implemented -->
+
+
+## 🔧 **Proposed Implementation**
+<!-- If you have ideas on how this could be implemented, share them here -->
+- [ ] UI changes needed
+- [ ] New workflow components
+- [ ] API integrations required
+- [ ] Database schema changes
+- [ ] Documentation updates needed
+
+## 📊 **Use Case & Examples**
+<!-- Describe your specific use case and how this feature would help -->
+**Example scenario:**
+
+
+**Expected workflow:**
+1. 
+2. 
+3. 
+
+## 🔄 **Alternative Solutions**
+<!-- Describe any alternative solutions or features you've considered -->
+
+
+## 📈 **Success Metrics**
+<!-- How would we measure the success of this feature? -->
+- [ ] Increased application success rate
+- [ ] Reduced setup time
+- [ ] Better user experience
+- [ ] Cost reduction
+- [ ] Other: ___________
+
+## 📊 **Priority & Impact**
+<!-- Help us understand the importance of this feature -->
+- **Priority**: 
+  - [ ] 🔥 Critical - Blocking core functionality
+  - [ ] 🚀 High - Significant improvement to user experience
+  - [ ] 📈 Medium - Nice to have enhancement
+  - [ ] 💡 Low - Future consideration
+
+- **User Impact**: 
+  - [ ] All users
+  - [ ] Power users
+  - [ ] Developers/Contributors
+  - [ ] Specific use case: ___________
+
+## 📱 **Platform/Environment**
+<!-- Which platforms would this feature affect? -->
+- [ ] Job Discovery (LinkedIn, Indeed, etc.)
+- [ ] AI Analysis & Matching
+- [ ] Application Automation
+- [ ] Analytics & Tracking
+- [ ] Infrastructure/DevOps
+- [ ] Documentation
+
+## 🔗 **Related Issues**
+<!-- Link any related issues, discussions, or PRs -->
+- Relates to: #
+- Blocks: #
+- Blocked by: #
+
+## 📎 **Additional Context**
+<!-- Add any other context, screenshots, mockups, or research about the feature -->
+
+
+## ✅ **Acceptance Criteria**
+<!-- What would make this feature "done"? -->
+- [ ] 
+- [ ] 
+- [ ] 
+
+---
+
+**💡 Community Note:**
+- Please search existing issues before creating a new one
+- Consider starting a discussion in GitHub Discussions for complex features
+- Tag relevant maintainers if you need quick feedback
